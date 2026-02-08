@@ -1,1 +1,57 @@
-# loan-payment-processing-api
+# Loan Payment Processing API
+
+A serious and realistic service, perfect for a banking experience.
+
+Designed as a small but robust backend, with professional expertise.
+
+---
+
+## ✨ Main Features
+- Professional REST API
+- User, account, and transaction management
+- Transaction states: `PENDING`, `APPROVED`, `REJECTED`
+- Real validations and explicit rules
+- Error handling with clear responses
+- Authentication and roles
+- Relational persistence (PostgreSQL)
+- Logging
+- Minimal required tests
+
+---
+
+## 🚫 What it ISN'T
+- It's not a simple CRUD application
+- It's not a trendy microservice
+- It's not a tutorial clone
+
+---
+
+## ✅ What it IS
+A small but robust backend, designed with professional expertise.
+
+Focused on demonstrating API design, clear domain, maintainable code, and minimum reliability.
+
+---
+
+## 📐 Technical Scope – Phase 1
+**Technologies in safe zone:**
+- Java 17+
+- Spring Boot
+- REST API
+- PostgreSQL (ideal)
+- Git
+
+---
+
+## 🎯 Demonstrated Objectives
+- API design with clear endpoints
+- Well-defined domain model
+- Readable and maintainable code
+- Guaranteed minimum reliability
+- Ability to explain the design
+
+---
+
+## 🚀 How to execute
+1. Clone the repository:
+```bash
