@@ -24,7 +24,7 @@ spring:
 management:
   endpoints:
     web:
-      base-path: /
+      base-path: /actuator
       exposure:
         include: health,info
 ---
@@ -44,7 +44,7 @@ spring:
 management:
   endpoints:
     web:
-      base-path: /
+      base-path: /actuator
       exposure:
         include: health,info
   endpoint:
