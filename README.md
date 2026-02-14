@@ -6,6 +6,10 @@ Designed as a small but robust backend, with professional expertise.
 
 ---
 
+This mini core banking system prioritizes accounting consistency, traceability, and idempotence. It does not assume perfection in distributed environments; instead, it guarantees fault detection, controlled compensation, and reconciliation capabilities.
+
+---
+
 ## ✨ Main Features
 - Professional REST API
 - User, account, and transaction management
@@ -50,6 +54,8 @@ Focused on demonstrating API design, clear domain, maintainable code, and minimu
 - Guaranteed minimum reliability
 - Ability to explain the design
 
+---
+I didn't implement Saga because the current system is monolithic and operates within a single ACID transaction. Introducing a distributed pattern in this context would be overly technical. However, the design respects aggregate boundaries and allows for evolution towards a distributed model if the context requires it.
 ---
 
 ## 🚀 How to execute
