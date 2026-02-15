@@ -62,3 +62,23 @@ I didn't implement Saga because the current system is monolithic and operates wi
 1. Clone the repository:
 ```bash
 https://github.com/yeihc/loan-payment-processing-api.git
+
+## Estructure:
+
+com.yeihc
+ ├── domain <-- The heart (Zero Spring/JPA dependencies)
+ │    ├── model <-- User, Account, Transfer, Money (VO)
+ │    ├── repository <-- Ports (Interfaces: AccountRepository)
+ │    ├── exception <-- Business exceptions
+ │    └── event <-- DomainEvents
+ ├── application <-- Orchestration (Use Cases)
+ │    ├── usecase <-- TransferFundsUseCase, OpenAccountUseCase
+ │    ├── dto <-- Service Request/Response
+ │    └── service <-- Use Case Implementation
+ ├── infrastructure <-- Technical Details (Tools)
+ │    ├── persistence <-- JPA Implementation, DB Entities (if you choose to separate them), Adapters
+ │    └── config <-- Spring Beans, Security, etc.
+ └── interfaces <-- Entry Points
+      ├── rest <-- Controllers
+      ├── mapper <-- DTO to Domain Converters
+      └── advice<-- GlobalExceptionHandler
