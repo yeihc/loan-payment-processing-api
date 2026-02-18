@@ -186,3 +186,15 @@ Explicit prohibition:
 
   * optional: AccountDebitedEvent, AccountCreditedEvent
 
+## 6) Orchestration Validations (Fail-Fast)
+
+* Source ID != Destination ID
+* Quantity > 0 (with isLessThanOrEqual)
+* Validations are in Application (not domain)
+
+## 7) Idempotency (Solid Foundation)
+
+* Idempotency Key in Transfer
+* Unique Constraint
+* findByIdempotencyKey and TransferRepository
+* Check early in use case

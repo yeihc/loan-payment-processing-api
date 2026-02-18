@@ -69,10 +69,25 @@ public final class Money {
         return new Money(this.value.subtract(other.value));
     }
 
+    // Standard getters, equals, and hashCode
+    public BigDecimal getValue() { return value; }
+
     // --- Comparison Operations ---
 
     public boolean isLessThan(Money other) {
         return this.value.compareTo(other.value) < 0;
+    }
+
+    /**
+     * Compares if this amount is less than or equal to another.
+     * Uses compareTo to ignore scale differences (e.g., 1.0 vs 1.00).
+     */
+    public boolean isLessThanOrEqual(Money other) {
+        return this.value.compareTo(other.value) <= 0;
+    }
+
+    public boolean isGreaterThan(Money other) {
+        return this.value.compareTo(other.value) > 0;
     }
 
     /**

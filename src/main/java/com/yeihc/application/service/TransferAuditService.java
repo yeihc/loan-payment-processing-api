@@ -33,8 +33,8 @@ public class TransferAuditService {
      * @return The created Transfer aggregate in PENDING state.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public Transfer createPending(UUID source, UUID target, Money amount) {
-        Transfer t = new Transfer(UUID.randomUUID(), source, target, amount);
+    public Transfer createPending(UUID source, UUID target, Money amount, String idempotencyKey) {
+        Transfer t = new Transfer(UUID.randomUUID(), source, target, amount, idempotencyKey);
         transferRepository.save(t);
         return t;
     }

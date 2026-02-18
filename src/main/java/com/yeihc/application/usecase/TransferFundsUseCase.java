@@ -1,5 +1,7 @@
 package com.yeihc.application.usecase;
 
+import com.yeihc.application.event.DomainEventDispatcher;
+import com.yeihc.domain.event.DomainEvent;
 import com.yeihc.domain.model.Account;
 import com.yeihc.domain.model.Money;
 import com.yeihc.domain.model.Transfer;
@@ -11,6 +13,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -30,6 +38,7 @@ public class TransferFundsUseCase {
     private final AccountRepository accountRepository;
     private final TransferRepository transferRepository;
     private final TransferAuditService transferAuditService;
+    private final DomainEventDispatcher eventDispatcher;
 
     /**
      * Executes the transfer operation.
@@ -39,46 +48,76 @@ public class TransferFundsUseCase {
      * @throws DomainException if business rules (status, balance) are violated.
      */
     @Transactional
-    public void execute(UUID sourceId, UUID targetId, Money amount) {
+    public void execute(UUID sourceId, UUID targetId, Money amount, String idempotencyKey) {
 
-        // 1. Pre-Transaction Audit: Create a persistent record of the intent.
-        // Assuming createPending uses Propagation.REQUIRES_NEW to commit immediately.
-        Transfer transfer = transferAuditService.createPending(sourceId, targetId, amount);
+        // 1. Validaciones de Orquestación (Fail-fast)
+        validateRequest(sourceId, targetId, amount);
+
+        // 2. Control de Idempotencia
+        // Si ya existe, simplemente salimos (o lanzamos excepción según política)
+        if (transferRepository.findByIdempotencyKey(idempotencyKey).isPresent()) {
+            return;
+        }
+
+        // 3. Audit Trail con Rollback Protection (REQUIRES_NEW)
+        // Se guarda en DB inmediatamente, pase lo que pase después.
+        Transfer transfer = transferAuditService.createPending(sourceId, targetId, amount, idempotencyKey);
 
         try {
-            // 2. Aggregate Loading
+            // 4. Carga de Agregados
             Account source = accountRepository.findById(sourceId)
                     .orElseThrow(() -> new DomainException("SOURCE_NOT_FOUND", "Source account not found"));
-
             Account target = accountRepository.findById(targetId)
                     .orElseThrow(() -> new DomainException("TARGET_NOT_FOUND", "Target account not found"));
 
-            // 3. Domain Logic Execution
-            // Invariants are checked inside these methods (insufficient funds, active status).
+            // 5. Lógica de Dominio
             source.debit(amount);
             target.credit(amount);
-
-            // 4. Update the local Transfer state to success
             transfer.complete();
 
-            // 5. Finalize Main Transaction
-            // This saves both accounts and the transfer's COMPLETED status in one atomic commit.
+            // 6. Persistencia (ACID)
             accountRepository.save(source);
             accountRepository.save(target);
             transferRepository.save(transfer);
 
-            // TODO: Dispatch Domain Events here (pullDomainEvents)
+            // 7. Pull & Dispatch Domain Events
+            // Recolectamos eventos de todos los involucrados
+            List<DomainEvent> events = new ArrayList<>();
+            events.addAll(source.pullDomainEvents());
+            events.addAll(target.pullDomainEvents());
+            events.addAll(transfer.pullDomainEvents());
+
+            dispatchAfterCommit(events);
 
         } catch (DomainException e) {
-            // 6. Controlled Business Failure
-            // Explicitly record the reason for failure in a separate transaction.
+            // 8. Registro de fallo persistente (REQUIRES_NEW)
             transferAuditService.markFailed(transfer.getId(), e.getCode(), e.getMessage());
-            throw e; // Rethrow to notify the caller and rollback balance changes if any.
-
+            throw e; // Rollback de los saldos
         } catch (Exception e) {
-            // 7. Uncontrolled Technical Failure
             transferAuditService.markFailed(transfer.getId(), "SYSTEM_ERROR", "Unexpected error");
-            throw e;
+            throw e; // Rollback de los saldos
         }
     }
+
+    private void validateRequest(UUID sourceId, UUID targetId, Money amount) {
+        if (sourceId.equals(targetId)) {
+            throw new DomainException("SAME_ACCOUNT_TRANSFER", "Source and target accounts must be different");
+        }
+        if (amount.isLessThanOrEqual(Money.zero())) {
+            throw new DomainException("INVALID_AMOUNT", "Transfer amount must be greater than zero");
+        }
+    }
+
+
+    private void dispatchAfterCommit(List<DomainEvent> events) {
+        if (events == null || events.isEmpty()) return;
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                eventDispatcher.dispatch(events);
+            }
+        });
+    }
+
 }

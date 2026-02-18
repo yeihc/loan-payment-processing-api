@@ -51,6 +51,8 @@ public class Transfer {
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
+    @Column(unique = true)
+    private String idempotencyKey;
 
     /**
      * Internal domain event log for the Pull Model.
@@ -72,11 +74,12 @@ public class Transfer {
      * @param targetAccountId The destination account ID.
      * @param amount          The money value to be moved.
      */
-    public Transfer(UUID id, UUID sourceAccountId, UUID targetAccountId, Money amount) {
-        this.id = Objects.requireNonNull(id, "Transfer id cannot be null");
-        this.sourceAccountId = Objects.requireNonNull(sourceAccountId, "Source account cannot be null");
-        this.targetAccountId = Objects.requireNonNull(targetAccountId, "Target account cannot be null");
-        this.amount = Objects.requireNonNull(amount, "Amount cannot be null");
+    public Transfer(UUID id, UUID sourceAccountId, UUID targetAccountId, Money amount, String idempotencyKey) {
+        this.id = Objects.requireNonNull(id);
+        this.sourceAccountId = Objects.requireNonNull(sourceAccountId);
+        this.targetAccountId = Objects.requireNonNull(targetAccountId);
+        this.amount = Objects.requireNonNull(amount);
+        this.idempotencyKey = Objects.requireNonNull(idempotencyKey); // Requerida para seguridad
         this.status = TransferStatus.PENDING;
         this.createdAt = Instant.now();
     }
