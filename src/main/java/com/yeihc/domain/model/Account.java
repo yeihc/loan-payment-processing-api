@@ -1,13 +1,12 @@
 package com.yeihc.domain.model;
 
-import com.yeihc.domain.event.AccountCreditedEvent;
-import com.yeihc.domain.event.AccountDebitedEvent;
-import com.yeihc.domain.event.DomainEvent;
+import com.yeihc.domain.event.*;
 import com.yeihc.domain.exception.DomainException;
 import jakarta.persistence.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -27,6 +26,9 @@ public class Account {
 
     @Id
     private UUID id;
+
+    @Column(nullable = false)
+    private UUID customerId;
 
     @Column(name = "account_number", nullable = false, unique = true)
     private String accountNumber;
@@ -67,11 +69,15 @@ public class Account {
      * Business constructor for new accounts.
      * Defaults balance to zero and status to ACTIVE.
      */
-    public Account(UUID id, String accountNumber) {
-        this.id = id;
-        this.accountNumber = accountNumber;
-        this.balance = Money.zero();
-        this.status = AccountStatus.ACTIVE;
+    // Dentro de Account.java
+    public Account(UUID id, UUID customerId, Money initialBalance) {
+        this.id = Objects.requireNonNull(id);
+        this.customerId = Objects.requireNonNull(customerId);
+        this.balance = Objects.requireNonNull(initialBalance);
+        this.status = AccountStatus.ACTIVE; // Nace activa por defecto
+
+        // Registrar evento de creación
+        this.domainEvents.add(new AccountOpenedEvent(this.id, this.customerId, this.balance));
     }
 
     // --- Domain Behavior (Business Logic) ---
@@ -80,29 +86,40 @@ public class Account {
      * Decreases the account balance.
      * @throws DomainException if account is inactive or has insufficient funds.
      */
-    public void debit(Money amount) {
-        validateActive();
-
-        if (balance.isLessThan(amount)) {
-            throw new DomainException(
-                    "INSUFFICIENT_FUNDS",
-                    "The current balance " + balance + " is not enough for the requested debit of " + amount
-            );
+    public Transaction debit(Money amount, String description) {
+        if (this.status != AccountStatus.ACTIVE) {
+            throw new DomainException("ACCOUNT_NOT_ACTIVE", "Cannot debit from an inactive account");
+        }
+        if (this.balance.isLessThanOrEqual(amount)) { // Asumiendo que no permites sobregiro
+            throw new DomainException("INSUFFICIENT_FUNDS", "Not enough balance");
         }
 
         this.balance = this.balance.subtract(amount);
-        domainEvents.add(new AccountDebitedEvent(this.id, amount));
+
+        // Generamos la transacción del Ledger
+        return new Transaction(
+                UUID.randomUUID(),
+                this.id,
+                Transaction.TransactionType.DEBIT,
+                amount,
+                description
+        );
     }
 
     /**
      * Increases the account balance.
      * @throws DomainException if account is inactive.
      */
-    public void credit(Money amount) {
-        validateActive();
-
+    public Transaction credit(Money amount, String description) {
         this.balance = this.balance.add(amount);
-        domainEvents.add(new AccountCreditedEvent(this.id, amount));
+
+        return new Transaction(
+                UUID.randomUUID(),
+                this.id,
+                Transaction.TransactionType.CREDIT,
+                amount,
+                description
+        );
     }
 
     /**
@@ -115,6 +132,25 @@ public class Account {
                     "Account " + accountNumber + " is currently in " + status + " status."
             );
         }
+    }
+
+    // Dentro de Account.java
+
+    public void close(String reason) {
+        if (this.status == AccountStatus.CLOSED) return;
+
+        if (!this.balance.isZero()) {
+            throw new DomainException("INVALID_STATUS_CHANGE", "Cannot close account with remaining balance");
+        }
+
+        this.status = AccountStatus.CLOSED;
+
+        // Registramos el evento de dominio
+        this.domainEvents.add(new AccountClosedEvent(this.id, reason));
+    }
+
+    public boolean isClosed() {
+        return this.status == AccountStatus.CLOSED;
     }
 
     // --- Domain Events Management (Pull Model) ---

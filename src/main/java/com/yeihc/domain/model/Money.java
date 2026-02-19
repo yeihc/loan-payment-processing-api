@@ -54,10 +54,14 @@ public final class Money {
 
     /**
      * Utility method for initializing zero balances.
-     */
+     * /**
+     *      * A useful method for obtaining a Money item with a value of 0.
+     *      * * Very useful for comparisons and clearing balances.
+     *      */
     public static Money zero() {
         return new Money(BigDecimal.ZERO);
     }
+
 
     // --- Arithmetic Operations (Returning new instances to maintain immutability) ---
 
@@ -96,6 +100,10 @@ public final class Money {
      */
     public boolean isNegative() {
         return this.value.signum() < 0;
+    }
+
+    public boolean isZero() {
+        return this.value.compareTo(java.math.BigDecimal.ZERO) == 0;
     }
 
     /**

@@ -198,3 +198,36 @@ Explicit prohibition:
 * Unique Constraint
 * findByIdempotencyKey and TransferRepository
 * Check early in use case
+
+## 8) Commands:
+
+* OpenAccountCommand
+* TransferFundsCommand
+*CloseAccountCommand
+
+## 9) Use Cases:
+
+* OpenAccountUseCase ✅ with Command + afterCommit
+* TransferFundsUseCase ✅ ACID + idempotent + ledger + afterCommit
+* CloseAccountUseCase ✅ idempotent + invariants + afterCommit
+
+*  Conversion to Money outside the domain
+* Audit trail with REQUIRES_NEW
+* Events dispatched only after commit
+  
+# Week 3 —🧪 Infrastructure (JPA Adapters)
+
+* JpaUserRepository
+* JpaAccountRepository (keyed by @Version)
+* JpaTransferRepository (true idempotence by constraint)
+* JpaTransactionRepository
+
+# 🚀 Tests
+
+* Unit tests (Money, Account)
+* Integration tests (transfer, idempotence)
+* Concurrency stress tests (optimistic locking)
+
+# 🌱 Portfolio documentation
+
+README with critical decisions and test results
