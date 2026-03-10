@@ -1,5 +1,4 @@
-Markdown
-# 🏦 Loan Payment Processing API (Core Banking Engine)
+# 🏦 Loan Payment Processing API (Bank Transfer Processing Engine)
 
 > A financial processing engine designed under **Hexagonal Architecture** and **Domain-Driven Design (DDD)** principles, prioritizing atomic consistency, idempotency, and absolute traceability.
 
@@ -24,6 +23,9 @@ Every transfer requires a unique `idempotencyKey`.
 ### 4. Immutable Ledger (Audit Trail)
 Transactions are never edited or deleted. They are **Append-Only** records.
 * **Reason:** Compliance with banking audit standards. Any error is corrected with a reversal or adjustment transaction, keeping the historical record intact for reconciliation.
+---
+#### Account is modeled as the Aggregate Root responsible for protecting balance invariants.
+#### Transfers coordinate two aggregates but never directly mutate their internal state.
 
 ---
 
