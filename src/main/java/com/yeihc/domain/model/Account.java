@@ -76,6 +76,8 @@ public class Account {
         this.balance = Objects.requireNonNull(initialBalance);
         this.status = AccountStatus.ACTIVE; // Nace activa por defecto
 
+        this.accountNumber = generateAccountNumber();
+
         // Registrar evento de creación
         this.domainEvents.add(new AccountOpenedEvent(this.id, this.customerId, this.balance));
     }
@@ -165,6 +167,12 @@ public class Account {
         domainEvents.clear();
         return events;
     }
+
+
+    private String generateAccountNumber() {
+        return "ACC-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
 
     // --- Getters (Business Accessors) ---
 
