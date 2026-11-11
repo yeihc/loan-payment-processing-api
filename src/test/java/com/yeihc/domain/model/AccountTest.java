@@ -150,6 +150,36 @@ class AccountTest {
             assertThat(account.getStatus())
                     .isEqualTo(AccountStatus.CLOSED);
         }
+        @Test
+        @DisplayName("Should execute transfer of total available balance leaving source in zero")
+        void shouldExecuteTransferOfTotalBalance() {
+                // 1. GIVEN: Sender with exactly 500.00 and receiver with 100.00
+                User sender = userRepository.save(new User(UUID.randomUUID(), "Sender Full", "sender.full@test.com", "TAX-101"));
+                User receiver = userRepository.save(new User(UUID.randomUUID(), "Receiver Full", "receiver.full@test.com", "TAX-102"));
+
+                Account sourceAccount = accountRepository.save(new Account(UUID.randomUUID(), sender.getId(), Money.of(new BigDecimal("500.00"))));
+                Account targetAccount = accountRepository.save(new Account(UUID.randomUUID(), receiver.getId(), Money.of(new BigDecimal("100.00"))));
+
+                BigDecimal totalAvailable = new BigDecimal("500.00");
+                String idempotencyKey = "full-transfer-" + UUID.randomUUID();
+
+                // 2. WHEN: Executing transfer for the full amount
+                Transfer result = transferFundsUseCase.execute(
+                        sourceAccount.getId(),
+                        targetAccount.getId(),
+                        Money.of(totalAvailable),
+                        idempotencyKey
+                );
+
+                // 3. THEN: Validate source is exactly zero and target received the amount
+                Account updatedSource = accountRepository.findById(sourceAccount.getId()).orElseThrow();
+                Account updatedTarget = accountRepository.findById(targetAccount.getId()).orElseThrow();
+
+                assertThat(updatedSource.getBalance()).isEqualTo(Money.of(new BigDecimal("0.00")));
+                assertThat(updatedSource.getBalance().isZero()).isTrue();
+                assertThat(updatedTarget.getBalance()).isEqualTo(Money.of(new BigDecimal("600.00")));
+                assertThat(result.getStatus()).isEqualTo(TransferStatus.COMPLETED);
+        }
     }
 
     // ---------- Helper Method ----------

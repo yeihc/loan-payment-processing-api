@@ -92,8 +92,8 @@ public class Account {
         if (this.status != AccountStatus.ACTIVE) {
             throw new DomainException("ACCOUNT_NOT_ACTIVE", "Cannot debit from an inactive account");
         }
-        if (this.balance.isLessThanOrEqual(amount)) { // Asumiendo que no permites sobregiro
-            throw new DomainException("INSUFFICIENT_FUNDS", "Not enough balance");
+        if (this.balance.isLessThan(amount)) {
+            throw new DomainException("INSUFFICIENT_FUNDS", ...);
         }
 
         this.balance = this.balance.subtract(amount);
