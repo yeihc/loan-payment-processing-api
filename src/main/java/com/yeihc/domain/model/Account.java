@@ -92,18 +92,21 @@ public class Account {
         if (this.status != AccountStatus.ACTIVE) {
             throw new DomainException("ACCOUNT_NOT_ACTIVE", "Cannot debit from an inactive account");
         }
-        if (this.balance.isLessThan(amount)) {
-            throw new DomainException(
-                "INSUFFICIENT_FUNDS",
-                "Insufficient funds to complete the transaction"
-            );
-        }
+
         if (amount == null || amount.isZero() || amount.isNegative()) {
             throw new DomainException(
                 "INVALID_AMOUNT",
                 "Debit amount must be greater than zero"
             );
         }
+        
+        if (this.balance.isLessThan(amount)) {
+            throw new DomainException(
+                "INSUFFICIENT_FUNDS",
+                "Insufficient funds to complete the transaction"
+            );
+        }
+        
 
         this.balance = this.balance.subtract(amount);
 
