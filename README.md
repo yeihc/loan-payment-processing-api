@@ -8,9 +8,9 @@
 ## 📋 Table of Contents
 1. [Requirements & Tech Stack](#-requirements--tech-stack)
 2. [Critical Architectural Decisions](#-critical-architectural-decisions)
-3. [Configuration](#-configuration)
+3. [Configuration & Database Strategy](#-configuration--database-strategy)
 4. [Project Structure](#-project-structure)
-5. [Testing Strategy](#-testing-strategy-the-testing-pyramid)
+5. [Testing Strategy](#-testing-strategy)
 6. [Running the Application](#-running-the-application)
 7. [Current Status & Roadmap](#-current-status--roadmap)
 
@@ -20,7 +20,7 @@
 
 * **Java:** `21`
 * **Build Tool:** Apache Maven
-* **Database:** PostgreSQL (or H2 for local testing/development)
+* **Database (Local/Dev):** H2 Database (In-Memory / File-based)
 * **Framework:** Spring Boot
 
 ---
@@ -50,16 +50,20 @@ Transactions are never edited or deleted. They are **Append-Only** records.
 
 ---
 
-## ⚙️ Configuration
+## ⚙️ Configuration & Database Strategy
 
 The application can be configured using standard Spring Boot application profiles (`application.yml` or environment variables).
+
+### Database Environment
+* **Development & Local Execution:** Uses **H2** embedded database out-of-the-box for rapid execution and seamless test environment setup.
+* **Production Profile (`prod`):** Designed for **MySQL**. *Note: Using the `prod` profile requires adding the corresponding MySQL JDBC driver dependency to the `pom.xml`.*
 
 ### Environment Variables
 | Variable | Description | Default / Example |
 | :--- | :--- | :--- |
-| `SPRING_DATASOURCE_URL` | JDBC connection URL for the database | `jdbc:postgresql://localhost:5432/loan_payment_db` |
-| `SPRING_DATASOURCE_USERNAME` | Database username | `postgres` |
-| `SPRING_DATASOURCE_PASSWORD` | Database password | `secret` |
+| `SPRING_DATASOURCE_URL` | JDBC connection URL for the database | `jdbc:h2:mem:loandb` |
+| `SPRING_DATASOURCE_USERNAME` | Database username | `sa` |
+| `SPRING_DATASOURCE_PASSWORD` | Database password | `password` |
 | `SPRING_PROFILES_ACTIVE` | Active profile (`dev`, `prod`, `test`) | `dev` |
 
 ---
@@ -84,28 +88,36 @@ com.yeihc
 
 ---
 
-## 🧪 Testing Strategy (The Testing Pyramid)
+## 🧪 Testing Strategy
 
-The system features an automated test suite that guarantees the reliability of all fund movements.
+The automated test suite provides verification for critical domain rules, business invariants, and transactional flows.
 
-### Execution Command
+### Execution Commands
 
-To run all unit and integration tests:
-
+* **Run Unit Tests (Surefire Plugin):**
 ```bash
 ./mvnw test
 
 ```
 
+
+* **Run Full Suite including Integration Tests (Failsafe Plugin):**
+```bash
+./mvnw verify
+
+```
+
+
+
 ### Test Breakdown
 
 * **Unit Tests (Domain Layer):**
 * `MoneyTest`: Verifies immutable arithmetic, equality by value, and rounding rules.
-* `AccountTest`: Validates business invariants (e.g., forbidding closures with remaining balances, negative amounts, or overdrafts).
+* `AccountTest`: Validates business invariants (e.g., forbidding closures with remaining balances, zero/negative operation amounts, or overdrafts).
 
 
 * **Integration Tests (Application Layer):**
-* `TransferFundsUseCaseIT`: Full flow verification ensuring DB persistence, automatic Ledger entry generation (`DEBIT` / `CREDIT`), and exact balance calculations.
+* `TransferFundsUseCaseIT`: Full flow verification using Maven Failsafe and Spring Boot Test context. Validates DB persistence, automatic Ledger entry generation (`DEBIT` / `CREDIT`), and exact balance calculations (including total balance drain).
 
 
 
@@ -121,8 +133,7 @@ cd loan-payment-processing-api
 ```
 
 
-2. **Configure your Database:** Ensure PostgreSQL is running and update your profile/environment variables if necessary.
-3. **Run the application using Maven Wrapper:**
+2. **Run the application using Maven Wrapper:**
 ```bash
 ./mvnw spring-boot:run
 
@@ -136,11 +147,11 @@ cd loan-payment-processing-api
 
 ### ✅ Implemented Features (Current Status)
 
-* User and account registration logic.
+* User and account domain logic.
 * Account deposit, credit, debit, and lifecycle management.
 * Atomic fund transfers with idempotency protection.
 * Immutable audit trail / ledger generation (`DEBIT` / `CREDIT`).
-* Comprehensive unit and integration test suites.
+* Unit testing with Surefire and Integration testing configured via Maven Failsafe.
 
 ### 🚧 In Development / Roadmap
 
