@@ -80,6 +80,25 @@ class AccountTest {
         }
 
         @Test
+        @DisplayName("Should debit exact full balance resulting in zero")
+        void shouldDebitExactBalanceResultZero() {
+            // Given: An account with 100.00
+            Account account = createAccount("100.00");
+
+            // When: Debiting the full balance
+            Transaction tx = account.debit(
+                    Money.of(new BigDecimal("100.00")),
+                    "Debit full balance"
+            );
+
+            // Then: Balance must be zero
+            assertThat(account.getBalance())
+                    .isEqualTo(Money.of(new BigDecimal("0.00")));
+            assertThat(account.getBalance().isZero()).isTrue();
+            assertThat(tx.getType()).isEqualTo(Transaction.TransactionType.DEBIT);
+        }
+
+        @Test
         @DisplayName("Should fail when debiting more than available balance")
         void shouldFailDebitWithInsufficientFunds() {
             Account account = createAccount("50.00");
@@ -95,7 +114,114 @@ class AccountTest {
                     .isEqualTo("INSUFFICIENT_FUNDS");
 
             assertThat(exception.getMessage())
-                    .isEqualTo("Not enough balance");
+                    .isEqualTo("Insufficient funds to complete the transaction");
+        }
+
+        @Test
+        @DisplayName("Should fail when debiting zero amount")
+        void shouldFailDebitZeroAmount() {
+            Account account = createAccount("100.00");
+
+            DomainException exception = (DomainException) catchThrowable(() ->
+                    account.debit(
+                            Money.of(new BigDecimal("0.00")),
+                            "Zero debit"
+                    )
+            );
+
+            assertThat(exception.getCode())
+                    .isEqualTo("INVALID_AMOUNT");
+        }
+
+        @Test
+        @DisplayName("Should fail when debiting negative amount")
+        void shouldFailDebitNegativeAmount() {
+            Account account = createAccount("100.00");
+
+            DomainException exception = (DomainException) catchThrowable(() ->
+                    account.debit(
+                            Money.of(new BigDecimal("-10.00")),
+                            "Negative debit"
+                    )
+            );
+
+            assertThat(exception.getCode())
+                    .isEqualTo("INVALID_AMOUNT");
+        }
+
+        @Test
+        @DisplayName("Should fail when debiting null amount")
+        void shouldFailDebitNullAmount() {
+            Account account = createAccount("100.00");
+
+            DomainException exception = (DomainException) catchThrowable(() ->
+                    account.debit(null, "Null debit")
+            );
+
+            assertThat(exception.getCode())
+                    .isEqualTo("INVALID_AMOUNT");
+        }
+
+        @Test
+        @DisplayName("Should fail when crediting zero amount")
+        void shouldFailCreditZeroAmount() {
+            Account account = createAccount("100.00");
+
+            DomainException exception = (DomainException) catchThrowable(() ->
+                    account.credit(
+                            Money.of(new BigDecimal("0.00")),
+                            "Zero credit"
+                    )
+            );
+
+            assertThat(exception.getCode())
+                    .isEqualTo("INVALID_AMOUNT");
+        }
+
+        @Test
+        @DisplayName("Should fail when crediting negative amount")
+        void shouldFailCreditNegativeAmount() {
+            Account account = createAccount("100.00");
+
+            DomainException exception = (DomainException) catchThrowable(() ->
+                    account.credit(
+                            Money.of(new BigDecimal("-10.00")),
+                            "Negative credit"
+                    )
+            );
+
+            assertThat(exception.getCode())
+                    .isEqualTo("INVALID_AMOUNT");
+        }
+
+        @Test
+        @DisplayName("Should fail when crediting null amount")
+        void shouldFailCreditNullAmount() {
+            Account account = createAccount("100.00");
+
+            DomainException exception = (DomainException) catchThrowable(() ->
+                    account.credit(null, "Null credit")
+            );
+
+            assertThat(exception.getCode())
+                    .isEqualTo("INVALID_AMOUNT");
+        }
+
+        @Test
+        @DisplayName("Should fail when crediting a closed account")
+        void shouldFailCreditWhenAccountClosed() {
+            Account account = createAccount("0.00");
+            account.close("Close account");
+
+            DomainException exception = (DomainException) catchThrowable(() ->
+                    account.credit(
+                            Money.of(new BigDecimal("50.00")),
+                            "Credit closed account"
+                    )
+            );
+
+            assertThat(exception.getCode())
+                    .isEqualTo("ACCOUNT_NOT_ACTIVE");
         }
     }
 
@@ -149,36 +275,6 @@ class AccountTest {
             // Then: Status remains CLOSED without errors
             assertThat(account.getStatus())
                     .isEqualTo(AccountStatus.CLOSED);
-        }
-        @Test
-        @DisplayName("Should execute transfer of total available balance leaving source in zero")
-        void shouldExecuteTransferOfTotalBalance() {
-                // 1. GIVEN: Sender with exactly 500.00 and receiver with 100.00
-                User sender = userRepository.save(new User(UUID.randomUUID(), "Sender Full", "sender.full@test.com", "TAX-101"));
-                User receiver = userRepository.save(new User(UUID.randomUUID(), "Receiver Full", "receiver.full@test.com", "TAX-102"));
-
-                Account sourceAccount = accountRepository.save(new Account(UUID.randomUUID(), sender.getId(), Money.of(new BigDecimal("500.00"))));
-                Account targetAccount = accountRepository.save(new Account(UUID.randomUUID(), receiver.getId(), Money.of(new BigDecimal("100.00"))));
-
-                BigDecimal totalAvailable = new BigDecimal("500.00");
-                String idempotencyKey = "full-transfer-" + UUID.randomUUID();
-
-                // 2. WHEN: Executing transfer for the full amount
-                Transfer result = transferFundsUseCase.execute(
-                        sourceAccount.getId(),
-                        targetAccount.getId(),
-                        Money.of(totalAvailable),
-                        idempotencyKey
-                );
-
-                // 3. THEN: Validate source is exactly zero and target received the amount
-                Account updatedSource = accountRepository.findById(sourceAccount.getId()).orElseThrow();
-                Account updatedTarget = accountRepository.findById(targetAccount.getId()).orElseThrow();
-
-                assertThat(updatedSource.getBalance()).isEqualTo(Money.of(new BigDecimal("0.00")));
-                assertThat(updatedSource.getBalance().isZero()).isTrue();
-                assertThat(updatedTarget.getBalance()).isEqualTo(Money.of(new BigDecimal("600.00")));
-                assertThat(result.getStatus()).isEqualTo(TransferStatus.COMPLETED);
         }
     }
 

@@ -89,9 +89,7 @@ public class Account {
      * @throws DomainException if account is inactive or has insufficient funds.
      */
     public Transaction debit(Money amount, String description) {
-        if (this.status != AccountStatus.ACTIVE) {
-            throw new DomainException("ACCOUNT_NOT_ACTIVE", "Cannot debit from an inactive account");
-        }
+        validateActive();
 
         if (amount == null || amount.isZero() || amount.isNegative()) {
             throw new DomainException(
