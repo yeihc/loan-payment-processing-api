@@ -26,10 +26,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p><b>TESTING STRATEGY:</b></p>
  * <ul>
  * <li><b>Full Stack Integration:</b> Exercises the Use Case using real JPA repositories
- * and an actual database context (usually H2 or Testcontainers).</li>
- * <li><b>Transaction Integrity (ACID):</b> Verified by the {@code @Transactional} annotation,
- * ensuring that all repository operations (User, Account, Transaction, Transfer)
- * participate in a single database transaction.</li>
+ * and an actual database context.</li>
+ * <li><b>Transaction Management:</b> Uses {@code @Transactional} to ensure each test
+ * executes within a transaction and rolls back afterward to keep the database clean.</li>
  * <li><b>State Persistence:</b> Validates that domain side-effects (balance updates
  * and ledger entries) are correctly persisted and retrievable.</li>
  * </ul>
@@ -50,7 +49,7 @@ class TransferFundsUseCaseIT {
 
     @Autowired
     private TransactionRepository transactionRepository;
-    
+
     @Autowired
     private TransferRepository transferRepository;
 
@@ -160,7 +159,7 @@ class TransferFundsUseCaseIT {
         );
         transferFundsUseCase.execute(command);
 
-        // --- 3. THEN: Validate source is zero and target received the amount ---
+        // --- 3. THEN: Validate source is zero, target received the amount, and ledger is recorded ---
         Account updatedSource = accountRepository.findById(sourceAccount.getId()).orElseThrow();
         Account updatedTarget = accountRepository.findById(targetAccount.getId()).orElseThrow();
 
@@ -170,5 +169,17 @@ class TransferFundsUseCaseIT {
 
         Transfer transfer = transferRepository.findByIdempotencyKey(idempotencyKey).orElseThrow();
         assertThat(transfer.getStatus()).isEqualTo(TransferStatus.COMPLETED);
+
+        // D. Verify Ledger Movements for Total Balance Transfer
+        List<Transaction> sourceTxs = transactionRepository.findByAccountId(sourceAccount.getId());
+        List<Transaction> targetTxs = transactionRepository.findByAccountId(targetAccount.getId());
+
+        assertThat(sourceTxs).hasSize(1);
+        assertThat(sourceTxs.get(0).getType()).isEqualTo(Transaction.TransactionType.DEBIT);
+        assertThat(sourceTxs.get(0).getAmount()).isEqualTo(Money.of(totalAvailable));
+
+        assertThat(targetTxs).hasSize(1);
+        assertThat(targetTxs.get(0).getType()).isEqualTo(Transaction.TransactionType.CREDIT);
+        assertThat(targetTxs.get(0).getAmount()).isEqualTo(Money.of(totalAvailable));
     }
 }
