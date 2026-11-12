@@ -13,10 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.yeihc.loanpayment.LoanPaymentProcessingApiApplication;
-import org.springframework.boot.test.context.SpringBootTest;
-
-
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -39,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ul>
  */
 @SpringBootTest(classes = LoanPaymentProcessingApiApplication.class)
-//@Transactional
+@Transactional
 @DisplayName("Integration Test: Transfer Funds Use Case Flow")
 class TransferFundsUseCaseIT {
 
@@ -54,6 +50,7 @@ class TransferFundsUseCaseIT {
 
     @Autowired
     private TransactionRepository transactionRepository;
+    
     @Autowired
     private TransferRepository transferRepository;
 
@@ -96,6 +93,7 @@ class TransferFundsUseCaseIT {
                 idempotencyKey
         );
         transferFundsUseCase.execute(command);
+        
         // --- 3. THEN: Validate Database Consistency ---
 
         // A. Verify Final Balances in the Repository
@@ -126,5 +124,51 @@ class TransferFundsUseCaseIT {
         assertThat(targetTxs).hasSize(1);
         assertThat(targetTxs.get(0).getType()).isEqualTo(Transaction.TransactionType.CREDIT);
         assertThat(targetTxs.get(0).getAmount()).isEqualTo(Money.of(transferAmount));
+    }
+
+    @Test
+    @DisplayName("Should execute transfer of total available balance leaving source in zero")
+    void shouldExecuteTransferOfTotalBalance() {
+        // --- 1. GIVEN: Sender with 500.00 and receiver with 100.00 ---
+        User sender = new User(UUID.randomUUID(), "Sender Full", "sender.full@test.com", "TAX-101");
+        userRepository.save(sender);
+        User receiver = new User(UUID.randomUUID(), "Receiver Full", "receiver.full@test.com", "TAX-102");
+        userRepository.save(receiver);
+
+        Account sourceAccount = new Account(
+                UUID.randomUUID(),
+                sender.getId(),
+                Money.of(new BigDecimal("500.00"))
+        );
+        accountRepository.save(sourceAccount);
+        Account targetAccount = new Account(
+                UUID.randomUUID(),
+                receiver.getId(),
+                Money.of(new BigDecimal("100.00"))
+        );
+        accountRepository.save(targetAccount);
+
+        BigDecimal totalAvailable = new BigDecimal("500.00");
+        String idempotencyKey = "full-transfer-" + UUID.randomUUID();
+
+        // --- 2. WHEN: Executing transfer for the full amount ---
+        TransferFundsCommand command = new TransferFundsCommand(
+                sourceAccount.getId(),
+                targetAccount.getId(),
+                Money.of(totalAvailable),
+                idempotencyKey
+        );
+        transferFundsUseCase.execute(command);
+
+        // --- 3. THEN: Validate source is zero and target received the amount ---
+        Account updatedSource = accountRepository.findById(sourceAccount.getId()).orElseThrow();
+        Account updatedTarget = accountRepository.findById(targetAccount.getId()).orElseThrow();
+
+        assertThat(updatedSource.getBalance()).isEqualTo(Money.of(new BigDecimal("0.00")));
+        assertThat(updatedSource.getBalance().isZero()).isTrue();
+        assertThat(updatedTarget.getBalance()).isEqualTo(Money.of(new BigDecimal("600.00")));
+
+        Transfer transfer = transferRepository.findByIdempotencyKey(idempotencyKey).orElseThrow();
+        assertThat(transfer.getStatus()).isEqualTo(TransferStatus.COMPLETED);
     }
 }
