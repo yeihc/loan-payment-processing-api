@@ -1,4 +1,3 @@
-```markdown
 # 🏦 Loan Payment Processing API (Bank Transfer Processing Engine)
 
 > A financial processing engine designed under **Hexagonal Architecture** and **Domain-Driven Design (DDD)** principles, prioritizing atomic consistency, idempotency, and absolute traceability.
@@ -20,7 +19,7 @@
 
 * **Java:** `21`
 * **Build Tool:** Apache Maven
-* **Database (Local/Dev):** H2 Database (In-Memory / File-based)
+* **Database (Local/Dev):** H2 Database (In-Memory)
 * **Framework:** Spring Boot
 
 ---
@@ -61,7 +60,7 @@ The application can be configured using standard Spring Boot application profile
 ### Environment Variables
 | Variable | Description | Default / Example |
 | :--- | :--- | :--- |
-| `SPRING_DATASOURCE_URL` | JDBC connection URL for the database | `jdbc:h2:mem:loandb` |
+| `SPRING_DATASOURCE_URL` | JDBC connection URL for the database | `jdbc:h2:mem:testdb` |
 | `SPRING_DATASOURCE_USERNAME` | Database username | `sa` |
 | `SPRING_DATASOURCE_PASSWORD` | Database password | `password` |
 | `SPRING_PROFILES_ACTIVE` | Active profile (`dev`, `prod`, `test`) | `dev` |
@@ -97,17 +96,12 @@ The automated test suite provides verification for critical domain rules, busine
 * **Run Unit Tests (Surefire Plugin):**
 ```bash
 ./mvnw test
-
 ```
-
 
 * **Run Full Suite including Integration Tests (Failsafe Plugin):**
 ```bash
 ./mvnw verify
-
 ```
-
-
 
 ### Test Breakdown
 
@@ -115,11 +109,8 @@ The automated test suite provides verification for critical domain rules, busine
 * `MoneyTest`: Verifies immutable arithmetic, equality by value, and rounding rules.
 * `AccountTest`: Validates business invariants (e.g., forbidding closures with remaining balances, zero/negative operation amounts, or overdrafts).
 
-
 * **Integration Tests (Application Layer):**
 * `TransferFundsUseCaseIT`: Full flow verification using Maven Failsafe and Spring Boot Test context. Validates DB persistence, automatic Ledger entry generation (`DEBIT` / `CREDIT`), and exact balance calculations (including total balance drain).
-
-
 
 ---
 
@@ -127,19 +118,14 @@ The automated test suite provides verification for critical domain rules, busine
 
 1. **Clone the repository:**
 ```bash
-git clone [https://github.com/yeihc/loan-payment-processing-api.git](https://github.com/yeihc/loan-payment-processing-api.git)
+git clone https://github.com/yeihc/loan-payment-processing-api.git
 cd loan-payment-processing-api
-
 ```
-
 
 2. **Run the application using Maven Wrapper:**
 ```bash
 ./mvnw spring-boot:run
-
 ```
-
-
 
 ---
 
@@ -163,7 +149,3 @@ cd loan-payment-processing-api
 ### 💡 Final Note on Design
 
 > *"I did not implement a SAGA pattern because the current system operates within a single ACID database. Introducing distributed complexity would violate the **KISS** principle. However, the design strictly respects Aggregate boundaries, facilitating a future migration to microservices if load requirements demand it."*
-
-```
-
-```
